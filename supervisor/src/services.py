@@ -8,9 +8,9 @@ from typing import TypedDict, Annotated
 from operator import add
 
 from a2a.client import A2ACardResolver, ClientFactory, ClientConfig
-from a2a.types import Message, Part, Role, TextPart
+from a2a.types import Message, Part, Role
 
-from src.agent import classifique_intencao_do_usuario
+from src.agents import classifique_intencao_do_usuario
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ async def request_agent(message: str, agent_url: str) -> str:
         logger.info(f"Descobrindo AgentCard em {agent_url}")
 
         resolver = A2ACardResolver(
-            http_client=HTTPX_CLIENT,
+            httpx_client=HTTPX_CLIENT,
             base_url=agent_url,
         )
 
@@ -40,7 +40,7 @@ async def request_agent(message: str, agent_url: str) -> str:
         logger.info(f"Agent encontrado: {agent_card.name}")
 
         config = ClientConfig(
-            http_client=HTTPX_CLIENT,
+            httpx_client=HTTPX_CLIENT,
             streaming=False
         )
         factory = ClientFactory(config)
@@ -51,7 +51,7 @@ async def request_agent(message: str, agent_url: str) -> str:
     msg = Message(
         role=Role.user,
         message_id=str(uuid.uuid4()),
-        parts=[Part(root=TextPart(text=message))],
+        parts=[Part(root={"text": message})],
     )
 
     logger.info(f"Enviando mensagem para agente: {message}")
@@ -87,7 +87,7 @@ async def cartao_credito_node(state: State):
     
     resposta = await request_agent(
         query, 
-        AGENTS["cartao_credito_agent"]
+        AGENTS["cartao_credito"]
         )
     
     return {"responses": [resposta]}
@@ -101,7 +101,7 @@ async def abrir_conta_node(state: State):
     
     resposta = await request_agent(
         query, 
-        AGENTS["abrir_conta_agent"]
+        AGENTS["abrir_conta"]
         )
     
     return {"responses": [resposta]}
