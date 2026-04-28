@@ -1,7 +1,8 @@
-from a2a.server.apps import A2AStarletteApplication
 from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.tasks import InMemoryTaskStore
+from a2a.server.routes import create_agent_card_routes, create_jsonrpc_routes
 from a2a.types import AgentCapabilities, AgentCard, AgentSkill
+from starlette.applications import Starlette
 from executer import CartaoDeCreditoExecutor
 
 # -----------------------
@@ -44,12 +45,15 @@ handler = DefaultRequestHandler(
 )
 
 # -----------------------
-# A2A Application
+# Define routes for transports
 # -----------------------
-server = A2AStarletteApplication(
-    http_handler=handler,
-    agent_card=agent_card,
-)
+routes = []
+# A2A Agent Card routes
+routes.extend(create_agent_card_routes(agent_card))
+# JSON-RPC routes
+routes.extend(create_jsonrpc_routes(handler, rpc_url='/api/v1/jsonrpc/'))
 
-# EXPOSIÇÃO DO APP PARA O UVICORN
-app = server.build()
+# -----------------------
+# Create application using routes
+# -----------------------
+app = Starlette(routes=routes)
