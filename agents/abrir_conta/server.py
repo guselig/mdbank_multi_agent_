@@ -1,9 +1,9 @@
 from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.tasks import InMemoryTaskStore
 from a2a.server.routes import create_agent_card_routes, create_jsonrpc_routes
-from a2a.types import AgentCapabilities, AgentCard, AgentSkill
+from a2a.types import AgentCapabilities, AgentCard, AgentInterface, AgentSkill
 from starlette.applications import Starlette
-from executor import AbrirContaExecutor
+from executer import AbrirContaExecutor
 
 
 # Definição do skill
@@ -33,7 +33,12 @@ skill = AgentSkill(
 agent_card = AgentCard(
     name="Agente de Abertura de Conta MDBank",
     description="Especialista em abertura de contas bancárias do MDBank.",
-    url="http://abrir_conta_agent:8000/",
+    supported_interfaces=[
+        AgentInterface(
+            protocol_binding='JSONRPC',
+            url='http://abrir_conta_agent:8000/api/v1/jsonrpc/',
+        ),
+    ],
     default_input_modes=["text"],
     default_output_modes=["text"],
     skills=[skill],
@@ -45,6 +50,7 @@ agent_card = AgentCard(
 handler = DefaultRequestHandler(
     agent_executor=AbrirContaExecutor(),
     task_store=InMemoryTaskStore(),
+    agent_card=agent_card,
 )
 
 # Define routes for transports as defined in the AgentCard

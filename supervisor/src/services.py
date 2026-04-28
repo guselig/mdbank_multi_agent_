@@ -1,5 +1,4 @@
 import logging
-import httpx
 import uuid
 
 from langgraph.graph import StateGraph, START, END
@@ -7,14 +6,13 @@ from langgraph.types import Send
 from typing import TypedDict, Annotated
 from operator import add
 
-from a2a.client import A2ACardResolver, ClientFactory, ClientConfig
-from a2a.types import Message, Part, Role
+from a2a.client import create_client
+from a2a.helpers import new_text_message, get_message_text
+from a2a.types import Role
 
 from src.agents import classifique_intencao_do_usuario
 
 logger = logging.getLogger(__name__)
-
-HTTPX_CLIENT = httpx.AsyncClient(timeout=30)
 
 AGENTS = {
     "cartao_credito": "http://cartao_credito_agent:8000",
@@ -29,38 +27,27 @@ class State(TypedDict):
 
 async def request_agent(message: str, agent_url: str) -> str:
     if agent_url not in CLIENT_CACHE:
-        logger.info(f"Descobrindo AgentCard em {agent_url}")
-
-        resolver = A2ACardResolver(
-            httpx_client=HTTPX_CLIENT,
-            base_url=agent_url,
-        )
-
-        agent_card = await resolver.get_agent_card()
-        logger.info(f"Agent encontrado: {agent_card.name}")
-
-        config = ClientConfig(
-            httpx_client=HTTPX_CLIENT,
-            streaming=False
-        )
-        factory = ClientFactory(config)
-        CLIENT_CACHE[agent_url] = factory.create(agent_card)
+        logger.info(f"Criando cliente para agente em {agent_url}")
+        
+        # v1.0: create_client é async e retorna diretamente o cliente
+        CLIENT_CACHE[agent_url] = await create_client(agent_url)
+        logger.info(f"Cliente criado com sucesso")
 
     client = CLIENT_CACHE[agent_url]
 
-    msg = Message(
-        role=Role.user,
-        message_id=str(uuid.uuid4()),
-        parts=[Part(root={"text": message})],
-    )
+    # v1.0: Criar mensagem
+    msg = new_text_message(text=message, role=Role.ROLE_USER)
 
     logger.info(f"Enviando mensagem para agente: {message}")
 
-    async for event in client.send_message(msg):
-        if isinstance(event, Message):
-            for part in event.parts:
-                if part.root.kind == "text":
-                    return part.root.text
+    # v1.0: send_message aceita Message diretamente - o cliente cria o request internamente
+    async for chunk in client.send_message(msg):
+        # Verificar se o chunk contém uma mensagem
+        if chunk.HasField('message'):
+            # Usar helper get_message_text para extrair texto
+            response_text = get_message_text(chunk.message)
+            if response_text:
+                return response_text
                 
     return "Sem resposta do agente."
 
